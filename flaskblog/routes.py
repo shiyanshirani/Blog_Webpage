@@ -7,18 +7,18 @@ from flaskblog.forms import LoginForm, RegisterationForm, UpdateAccountForm, Pos
 from flaskblog.models import User, Post
 from flask_login import login_user, current_user, logout_user, login_required
 
-
+# Route which will display home page.
 @app.route("/")
 def home():
     posts = Post.query.all()
     return render_template('home.html', posts=posts)
 
-
+# Route to display about section of the webpage
 @app.route("/about")
 def about():
     return render_template('about.html', title='About')
 
-
+# Route to register on website.
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if current_user.is_authenticated:
@@ -33,7 +33,7 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html', title='Register', form=form)
 
-
+# Route to login.
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
@@ -49,12 +49,13 @@ def login():
             flash(f'Login Unsuccessful. Please check email and password', 'danger')
     return render_template('login.html', title='Login', form=form)
 
+# Route to logout.
 @app.route("/logout")
 def logout():
     logout_user()
     return redirect(url_for('home'))
 
-
+# Function to save picture and save as random hex value name.
 def save_picture(form_picture):
     random_hex = secrets.token_hex(8)
     _, f_ext = os.path.splitext(form_picture.filename)
@@ -69,6 +70,7 @@ def save_picture(form_picture):
 
     return picture_fn
         
+# Route to get account info or update account info.
 @app.route("/account", methods=["GET", "POST"])
 @login_required
 def account():
@@ -89,7 +91,7 @@ def account():
     return render_template('account.html', title='Account',
                              image_file=image_file, form=form)
 
-
+# Route to create new post.
 @app.route("/post/new", methods=["GET", "POST"])
 @login_required
 def new_post():
@@ -101,20 +103,31 @@ def new_post():
         flash('Your post has been created', 'success')
         return redirect(url_for('home'))
     return render_template('create_post.html', title='New Post',
-                                form=form, legend='Update Post')
+                                form=form, legend='New Post')
                                                                 
-# Route for each post
+# Route for each post .
 @app.route("/post/<int:post_id>")
 def post(post_id):
     post = Post.query.get_or_404(post_id)
     return render_template('post.html', title=post.title, post=post)
 
-@app.route("/post/<int:post_id>/update")
+# Route for updating existing post.
+@app.route("/post/<int:post_id>/update", methods=["GET", "POST"])
 @login_required
 def update_post(post_id):
     post = Post.query.get_or_404(post_id)
     if post.author != current_user:
         abort(403)
     form = PostForm()
-    return render_template ('create_post.html', title='Update Post',
-                                    form=form, legend='Update Post') 
+    if form.validate_on_submit():
+        post.title = form.title.data
+        post.content = form.content.data
+        db.session.commit()
+        flash('Your post has been updated', 'success')
+        return redirect(url_for('post', post_id=post.id))
+    elif request.method == "GET":
+        form.title.data = post.title
+        form.content.data = post.content
+    return render_template('create_post.html', title='Update Post',
+                            form=form, legend='Update Post')
+
